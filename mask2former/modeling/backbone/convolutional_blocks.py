@@ -1,6 +1,7 @@
 import torch
 import sys
 
+
 class ConvBlock(torch.nn.Module):
     def __init__(self, in_channels, filters, activation, kernel_size=3, dilation_rate=1):
         super(ConvBlock, self).__init__()
@@ -10,7 +11,7 @@ class ConvBlock(torch.nn.Module):
             in_channels=in_channels, out_channels=filters, kernel_size=kernel_size, dilation=dilation_rate, padding='same')
         self.bn_layer = torch.nn.BatchNorm2d(num_features=filters)
         if activation == 'relu':
-            self.activation_layer = torch.nn.ReLU
+            self.activation_layer = torch.nn.ReLU()
         elif activation == 'leaky_relu':
             self.activation_layer = torch.nn.LeakyReLU()
         elif activation is None:
@@ -35,13 +36,13 @@ class MultiResBlock(torch.nn.Module):
             W * 0.167) + int(W * 0.333) + int(W * 0.5)
         self.activation = activation
         self.sc_conv_block = ConvBlock(in_channels=in_channels, filters=int(
-            W * 0.167) + int(W * 0.333) + int(W * 0.5), kernel_size=1, activation=None, dilation_rate=dilation_rate)
+            W * 0.167) + int(W * 0.333) + int(W * 0.5), kernel_size=1, activation=activation, dilation_rate=dilation_rate)
         self.conv_block_3 = ConvBlock(in_channels=in_channels, filters=int(
-            W * 0.167), activation=None, dilation_rate=dilation_rate)
+            W * 0.167), activation=activation, dilation_rate=dilation_rate)
         self.conv_block_5 = ConvBlock(in_channels=self.conv_block_3.out_channels, filters=int(
-            W * 0.333), activation=None, dilation_rate=dilation_rate)
+            W * 0.333), activation=activation, dilation_rate=dilation_rate)
         self.conv_block_7 = ConvBlock(in_channels=self.conv_block_5.out_channels, filters=int(
-            W * 0.5), activation=None, dilation_rate=dilation_rate)
+            W * 0.5), activation=activation, dilation_rate=dilation_rate)
 
         self.bn_layer = torch.nn.BatchNorm2d(num_features=self.output_filters)
         self.bn_output_layer = torch.nn.BatchNorm2d(
@@ -70,6 +71,7 @@ class MultiResBlock(torch.nn.Module):
         mresx = torch.cat((conv3x3, conv5x5, conv7x7), dim=1)
         mresx = self.bn_layer(mresx)
         mresx = mresx + shortcut
+        mresx = self.bn_output_layer(mresx)
         mresx = self.activation_layer(mresx)
 
-        return self.bn_output_layer(mresx)
+        return mresx
