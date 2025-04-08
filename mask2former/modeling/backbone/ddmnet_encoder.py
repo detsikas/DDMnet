@@ -50,9 +50,9 @@ class ResPath(torch.nn.Module):
         return x
 
 
-class DMVAEncoder(torch.nn.Module):
+class DDMEncoder(torch.nn.Module):
     def __init__(self, in_channels, starting_filters=16, with_dropout=False, activation='relu'):
-        super(DMVAEncoder, self).__init__()
+        super(DDMEncoder, self).__init__()
         layer_filters = starting_filters
         self.with_dropout = with_dropout
         self.pooling_layer = torch.nn.MaxPool2d(2)
@@ -145,11 +145,12 @@ class DMVAEncoder(torch.nn.Module):
 
 
 @BACKBONE_REGISTRY.register()
-class DMVANetEncoder(DMVAEncoder, Backbone):
+class DDMNetEncoder(DDMEncoder, Backbone):
     def __init__(self, cfg, input_shape):
 
         super().__init__(
             in_channels=3,
+            starting_filters=26,
             with_dropout=True
         )
 
@@ -162,10 +163,10 @@ class DMVANetEncoder(DMVAEncoder, Backbone):
             "res5": 32,
         }
         self._out_feature_channels = {
-            "res2": 105,
-            "res3": 212,
-            "res4": 426,
-            "res5": 853,
+            "res2": 172,
+            "res3": 346,
+            "res4": 694,
+            "res5": 1388,
         }
 
     def forward(self, x):

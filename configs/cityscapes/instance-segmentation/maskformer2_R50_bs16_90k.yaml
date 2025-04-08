@@ -1,5 +1,6 @@
 _BASE_: Base-Cityscapes-InstanceSegmentation.yaml
 MODEL:
+  # WEIGHTS: "model_final_01a8ed.pkl"
   META_ARCHITECTURE: "MaskFormer"
   SEM_SEG_HEAD:
     NAME: "MaskFormerHead"

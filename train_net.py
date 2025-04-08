@@ -46,6 +46,8 @@ from detectron2.projects.deeplab import add_deeplab_config, build_lr_scheduler
 from detectron2.solver.build import maybe_add_gradient_clipping
 from detectron2.utils.logger import setup_logger
 
+import torch.nn as nn
+
 # MaskFormer
 from mask2former import (
     COCOInstanceNewBaselineDatasetMapper,
@@ -57,6 +59,9 @@ from mask2former import (
     SemanticSegmentorWithTTA,
     add_maskformer2_config,
 )
+
+from fvcore.nn import FlopCountAnalysis, parameter_count_table
+import sys
 
 
 class Trainer(DefaultTrainer):
@@ -88,7 +93,8 @@ class Trainer(DefaultTrainer):
             )
         # instance segmentation
         if evaluator_type == "coco":
-            evaluator_list.append(COCOEvaluator(dataset_name, output_dir=output_folder))
+            evaluator_list.append(COCOEvaluator(
+                dataset_name, output_dir=output_folder))
         # panoptic segmentation
         if evaluator_type in [
             "coco_panoptic_seg",
@@ -97,17 +103,22 @@ class Trainer(DefaultTrainer):
             "mapillary_vistas_panoptic_seg",
         ]:
             if cfg.MODEL.MASK_FORMER.TEST.PANOPTIC_ON:
-                evaluator_list.append(COCOPanopticEvaluator(dataset_name, output_folder))
+                evaluator_list.append(COCOPanopticEvaluator(
+                    dataset_name, output_folder))
         # COCO
         if evaluator_type == "coco_panoptic_seg" and cfg.MODEL.MASK_FORMER.TEST.INSTANCE_ON:
-            evaluator_list.append(COCOEvaluator(dataset_name, output_dir=output_folder))
+            evaluator_list.append(COCOEvaluator(
+                dataset_name, output_dir=output_folder))
         if evaluator_type == "coco_panoptic_seg" and cfg.MODEL.MASK_FORMER.TEST.SEMANTIC_ON:
-            evaluator_list.append(SemSegEvaluator(dataset_name, distributed=True, output_dir=output_folder))
+            evaluator_list.append(SemSegEvaluator(
+                dataset_name, distributed=True, output_dir=output_folder))
         # Mapillary Vistas
         if evaluator_type == "mapillary_vistas_panoptic_seg" and cfg.MODEL.MASK_FORMER.TEST.INSTANCE_ON:
-            evaluator_list.append(InstanceSegEvaluator(dataset_name, output_dir=output_folder))
+            evaluator_list.append(InstanceSegEvaluator(
+                dataset_name, output_dir=output_folder))
         if evaluator_type == "mapillary_vistas_panoptic_seg" and cfg.MODEL.MASK_FORMER.TEST.SEMANTIC_ON:
-            evaluator_list.append(SemSegEvaluator(dataset_name, distributed=True, output_dir=output_folder))
+            evaluator_list.append(SemSegEvaluator(
+                dataset_name, distributed=True, output_dir=output_folder))
         # Cityscapes
         if evaluator_type == "cityscapes_instance":
             assert (
@@ -129,10 +140,12 @@ class Trainer(DefaultTrainer):
                 assert (
                     torch.cuda.device_count() > comm.get_rank()
                 ), "CityscapesEvaluator currently do not work with multiple machines."
-                evaluator_list.append(CityscapesInstanceEvaluator(dataset_name))
+                evaluator_list.append(
+                    CityscapesInstanceEvaluator(dataset_name))
         # ADE20K
         if evaluator_type == "ade20k_panoptic_seg" and cfg.MODEL.MASK_FORMER.TEST.INSTANCE_ON:
-            evaluator_list.append(InstanceSegEvaluator(dataset_name, output_dir=output_folder))
+            evaluator_list.append(InstanceSegEvaluator(
+                dataset_name, output_dir=output_folder))
         # LVIS
         if evaluator_type == "lvis":
             return LVISEvaluator(dataset_name, output_dir=output_folder)
@@ -216,7 +229,8 @@ class Trainer(DefaultTrainer):
 
                 hyperparams = copy.copy(defaults)
                 if "backbone" in module_name:
-                    hyperparams["lr"] = hyperparams["lr"] * cfg.SOLVER.BACKBONE_MULTIPLIER
+                    hyperparams["lr"] = hyperparams["lr"] * \
+                        cfg.SOLVER.BACKBONE_MULTIPLIER
                 if (
                     "relative_position_bias_table" in module_param_name
                     or "absolute_pos_embed" in module_param_name
@@ -240,7 +254,8 @@ class Trainer(DefaultTrainer):
 
             class FullModelGradientClippingOptimizer(optim):
                 def step(self, closure=None):
-                    all_params = itertools.chain(*[x["params"] for x in self.param_groups])
+                    all_params = itertools.chain(
+                        *[x["params"] for x in self.param_groups])
                     torch.nn.utils.clip_grad_norm_(all_params, clip_norm_val)
                     super().step(closure=closure)
 
@@ -267,9 +282,11 @@ class Trainer(DefaultTrainer):
         # In the end of training, run an evaluation with TTA.
         logger.info("Running inference with test-time augmentation ...")
         model = SemanticSegmentorWithTTA(cfg, model)
+
         evaluators = [
             cls.build_evaluator(
-                cfg, name, output_folder=os.path.join(cfg.OUTPUT_DIR, "inference_TTA")
+                cfg, name, output_folder=os.path.join(
+                    cfg.OUTPUT_DIR, "inference_TTA")
             )
             for name in cfg.DATASETS.TEST
         ]
@@ -291,7 +308,8 @@ def setup(args):
     cfg.freeze()
     default_setup(cfg, args)
     # Setup logger for "mask_former" module
-    setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="mask2former")
+    setup_logger(output=cfg.OUTPUT_DIR,
+                 distributed_rank=comm.get_rank(), name="mask2former")
     return cfg
 
 
@@ -300,6 +318,7 @@ def main(args):
 
     if args.eval_only:
         model = Trainer.build_model(cfg)
+
         DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(
             cfg.MODEL.WEIGHTS, resume=args.resume
         )
